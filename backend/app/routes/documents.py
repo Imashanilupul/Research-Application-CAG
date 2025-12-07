@@ -1,6 +1,3 @@
-"""
-PDF upload and document management routes
-"""
 from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
 from typing import List
 import os

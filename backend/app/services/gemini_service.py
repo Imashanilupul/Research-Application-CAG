@@ -1,6 +1,3 @@
-"""
-LLM Integration Service for Gemini API
-"""
 import google.generativeai as genai
 from typing import Optional
 import logging

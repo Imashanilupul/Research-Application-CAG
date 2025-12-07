@@ -1,11 +1,10 @@
-"""
-Application settings and configuration management
-"""
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class Settings(BaseSettings):
     """Application configuration settings"""
@@ -18,35 +17,32 @@ class Settings(BaseSettings):
     )
     
     # API Configuration
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
-    debug: bool = False
-    log_level: str = "INFO"
+    api_host: str = os.getenv("API_HOST")
+    api_port: int = int(os.getenv("API_PORT"))
+    debug: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    log_level: str = os.getenv("LOG_LEVEL")
     
     # Gemini API
-    gemini_api_key: str = ""
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY")
     
     # ChromaDB Configuration
-    chroma_db_path: str = "./data/chroma_db"
-    chroma_collection_name: str = "research_papers"
+    chroma_db_path: str = os.getenv("CHROMA_DB_PATH")
+    chroma_collection_name: str = os.getenv("CHROMA_COLLECTION_NAME")
     
-    # Redis Configuration
-    redis_url: str = "redis://localhost:6379"
-    use_redis_cache: bool = False
     
     # File Upload Configuration
-    max_file_size_mb: int = 50
-    upload_folder: str = "./data/uploads"
-    allowed_extensions: str = "pdf"  # Changed to string, will be split in code
+    max_file_size_mb: int = os.getenv("MAX_FILE_SIZE_MB")
+    upload_folder: str = os.getenv("UPLOAD_FOLDER")
+    allowed_extensions: str = os.getenv("ALLOWED_EXTENSIONS")
     
     # LLM Configuration
-    llm_model_name: str = "gemini-2.5-flash"
-    embedding_model_name: str = "all-MiniLM-L6-v2"
-    max_tokens: int = 1000
-    temperature: float = 0.7
+    llm_model_name: str = os.getenv("LLM_MODEL_NAME")
+    embedding_model_name: str = os.getenv("EMBEDDING_MODEL_NAME")
+    max_tokens: int = int(os.getenv("MAX_TOKENS", 1000))
+    temperature: float = float(os.getenv("TEMPERATURE", 0.7))
     
     # CORS Configuration
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"  # Changed to string
+    cors_origins: str = os.getenv("CORS_ORIGINS")
     
     def get_allowed_extensions(self) -> List[str]:
         """Get allowed extensions as a list"""

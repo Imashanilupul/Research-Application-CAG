@@ -1,6 +1,3 @@
-"""
-Main FastAPI application
-"""
 import sys
 import os
 from pathlib import Path

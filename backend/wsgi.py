@@ -1,6 +1,3 @@
-"""
-WSGI entry point for production deployment
-"""
 import sys
 from pathlib import Path
 

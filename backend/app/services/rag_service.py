@@ -1,6 +1,3 @@
-"""
-Core RAG and CAG Service with ChromaDB integration
-"""
 import os
 import uuid
 from typing import List, Dict, Any, Optional

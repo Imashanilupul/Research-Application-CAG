@@ -1,6 +1,3 @@
-"""
-Health check routes
-"""
 from fastapi import APIRouter, HTTPException
 import logging
 

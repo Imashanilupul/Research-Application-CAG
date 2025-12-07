@@ -1,11 +1,7 @@
-"""
-Question answering routes with RAG/CAG
-"""
 from fastapi import APIRouter, HTTPException
 import logging
 
 from app.models import QuestionRequest, AnswerResponse
-from app.services import RAGService
 
 logger = logging.getLogger(__name__)
 
