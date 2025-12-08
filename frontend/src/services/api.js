@@ -49,7 +49,7 @@ export const listDocuments = async () => {
  * @param {number} topK - Number of chunks to retrieve
  * @returns {Promise<Object>} Answer response
  */
-export const askQuestion = async (documentId, question, topK = 3) => {
+export const askQuestion = async (documentId, conversationId, question, topK = 3) => {
   const response = await fetch(`${API_BASE_URL}/qa/ask`, {
     method: 'POST',
     headers: {
@@ -57,6 +57,7 @@ export const askQuestion = async (documentId, question, topK = 3) => {
     },
     body: JSON.stringify({
       document_id: documentId,
+      conversation_id: conversationId,
       question: question,
       top_k: topK,
     }),

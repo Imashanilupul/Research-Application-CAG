@@ -1,88 +1,118 @@
-from fastapi import APIRouter, Request
-from models.chat_models import ChatRequest, ChatResponse
-from db import get_chroma_client
-import google.generativeai as genai
-import config
-from sentence_transformers import SentenceTransformer
-from typing import Dict, List
+from typing import List, Optional
 
-router = APIRouter()
+import google.generativeai as genai
+from fastapi import APIRouter, Request
+from sentence_transformers import SentenceTransformer
+
+import config
+from cache import MemoryStore, SimpleTTLCache, make_cache_key
+from db import get_chroma_client
+from models.chat_models import ChatRequest, ChatResponse
+
+router = APIRouter(prefix="/qa", tags=["QA"])
 client = get_chroma_client()
 collection = client.get_or_create_collection(config.CHROMA_COLLECTION)
 
 genai.configure(api_key=config.GEMINI_API_KEY)
 embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 
-# Simple in-memory short-term memory (session_id -> list of exchanges)
-SHORT_TERM_MEMORY: Dict[str, List[str]] = {}
-MEMORY_LIMIT = 5  # Number of exchanges to remember
+# Cache layer
+response_cache = SimpleTTLCache(max_size=256, ttl_seconds=config.CACHE_TTL_SECONDS)
+memory_store = MemoryStore(
+    max_conversations=256,
+    ttl_seconds=config.MEMORY_TTL_SECONDS,
+    max_messages=config.MEMORY_MAX_MESSAGES,
+)
 
 
 def get_free_embedding(text: str):
-    """Generate embeddings using free SentenceTransformers"""
+    """Generate embeddings using free SentenceTransformers."""
     return embedding_model.encode(text).tolist()
 
 
-@router.post("/chat", response_model=ChatResponse)
+def format_memory(history: List[tuple]) -> str:
+    if not history:
+        return ""
+    formatted = []
+    for role, content in history:
+        formatted.append(f"{role.capitalize()}: {content}")
+    return "\n".join(formatted)
+
+
+def build_prompt(context_chunks: List[str], history: List[tuple], question: str) -> str:
+    context_text = "\n".join(context_chunks)
+    memory_text = format_memory(history)
+    system_prompt = (
+        "You are a concise research assistant. Use provided context chunks to answer the question. "
+        "If the answer is not in the context, say you are unsure."
+    )
+
+    return (
+        f"{system_prompt}\n\n"
+        f"Conversation Memory:\n{memory_text}\n\n"
+        f"Context:\n{context_text}\n\n"
+        f"Question: {question}\n"
+        "Answer:"
+    )
+
+
+@router.post("/ask", response_model=ChatResponse)
 def chat_endpoint(req: ChatRequest, request: Request):
-    # Use client IP as session_id for demonstration (replace with real session/user ID in production)
-    session_id = request.client.host
+    conversation_id = req.conversation_id or make_cache_key(req.document_id, request.client.host)
 
-    # Get or initialize memory for this session
-    memory = SHORT_TERM_MEMORY.get(session_id, [])
+    history = memory_store.get_history(conversation_id)
+    memory_store.append(conversation_id, "user", req.question)
 
-    # Add the latest user question to memory
-    memory.append(f"User: {req.question}")
-    if len(memory) > MEMORY_LIMIT:
-        memory = memory[-MEMORY_LIMIT:]  # Keep only the last N exchanges
+    cache_key = make_cache_key(req.document_id, req.question)
+    cached: Optional[ChatResponse] = response_cache.get(cache_key)
+    if cached:
+        memory_store.append(conversation_id, "assistant", cached.answer)
+        return cached
 
-    # Retrieve relevant documents from Chroma
     query_embedding = get_free_embedding(req.question)
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=req.top_k
+        n_results=req.top_k,
+        where={"document_base_id": req.document_id},
+        include=["documents", "metadatas", "distances"],
     )
-    docs = results['documents'][0] if results['documents'] else []
 
-    # Prepare prompt for Gemini LLM
-    context_text = "\n".join(docs)
-    memory_text = "\n".join(memory)
+    docs = results.get("documents", [[]])[0] if results.get("documents") else []
+    distances = results.get("distances", [[]])[0] if results.get("distances") else []
 
-    system_prompt = """You are an intelligent assistant for the Democratic Socialist Republic of Sri Lanka's blockchain-powered transparent governance platform. You help citizens understand governance processes, access information, and engage with democratic systems.
-
-Your Role and Behavior:
-- You are a helpful, knowledgeable, and friendly assistant that communicates naturally like a chatbot
-- Keep answers short, clear, and professional
-- If context lacks enough information, say so honestly
-"""
-
-    full_prompt = f"""{system_prompt}
-
-Short-Term Memory:
-{memory_text}
-
-Context Information: {context_text}
-
-User Question: {req.question}
-
-Respond naturally as a helpful governance platform assistant would, using the context information and short-term memory to provide accurate and concise answers. Do not add any styles to text. Just raw text needed."""
+    prompt = build_prompt(docs, history, req.question)
 
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(
-            full_prompt,
+            prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.2,
-                max_output_tokens=500
-            )
+                max_output_tokens=400,
+            ),
         )
-        # Add assistant's answer to memory
-        memory.append(f"Assistant: {response.text}")
-        if len(memory) > MEMORY_LIMIT:
-            memory = memory[-MEMORY_LIMIT:]
-        SHORT_TERM_MEMORY[session_id] = memory
 
-        return ChatResponse(answer=response.text)
-    except Exception as e:
-        error_message = f"Sorry, I encountered an error while processing your request: {str(e)}"
-        return ChatResponse(answer=error_message)
+        answer_text = response.text
+        # Approximate confidence: inverse of average distance (bounded 0..1)
+        confidence = None
+        if distances:
+            avg_distance = sum(distances) / len(distances)
+            confidence = max(0.0, min(1.0, 1 - avg_distance))
+
+        chat_response = ChatResponse(
+            answer=answer_text,
+            sources=docs,
+            confidence=confidence,
+        )
+
+        memory_store.append(conversation_id, "assistant", answer_text)
+        response_cache.set(cache_key, chat_response)
+        return chat_response
+    except Exception as exc:  # keep the chat responsive on LLM errors
+        fallback = ChatResponse(
+            answer=f"Sorry, I hit an error while answering: {exc}",
+            sources=docs,
+            confidence=None,
+        )
+        memory_store.append(conversation_id, "assistant", fallback.answer)
+        return fallback

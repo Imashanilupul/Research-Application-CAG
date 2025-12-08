@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { askQuestion } from '../services/api';
 import './ChatInterface.css';
 
@@ -10,8 +10,16 @@ function ChatInterface({ documentId, documentName }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  const buildConversationId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return `conv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -26,6 +34,7 @@ function ChatInterface({ documentId, documentName }) {
   // Add welcome message when document changes
   useEffect(() => {
     if (documentId) {
+      setConversationId(buildConversationId());
       setMessages([{
         id: 'welcome',
         type: 'assistant',
@@ -53,7 +62,9 @@ function ChatInterface({ documentId, documentName }) {
     setIsLoading(true);
 
     try {
-      const response = await askQuestion(documentId, question);
+      const convId = conversationId || buildConversationId();
+      setConversationId(convId);
+      const response = await askQuestion(documentId, convId, question);
       
       // Add assistant response
       const assistantMessage = {

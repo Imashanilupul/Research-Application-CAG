@@ -13,10 +13,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(documents.router, prefix="/docs", tags=["Documents"])
+app.include_router(documents.router, prefix="/documents", tags=["Documents"])
 app.include_router(query.router, prefix="/query", tags=["Query"])
-app.include_router(chat.router,  tags=["chat"])
+app.include_router(chat.router)
 
 @app.get("/")
 def root():
     return {"message": "RAG Backend running with Gemini + Chroma Cloud ✅"}
+
+
+@app.get("/health/")
+def health():
+    return {"status": "ok"}
