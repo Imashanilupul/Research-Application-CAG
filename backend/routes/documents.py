@@ -15,6 +15,7 @@ from db import get_chroma_client
 router = APIRouter()
 client = get_chroma_client()
 collection = client.get_or_create_collection(config.CHROMA_COLLECTION)
+summary_collection = client.get_or_create_collection(config.SUMMARIES_COLLECTION)
 
 # Initialize SentenceTransformer model
 embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
@@ -65,6 +66,17 @@ def generate_structured_summary(full_text: str) -> dict:
             "key_results": _fallback("Key Results"),
             "conclusion": _fallback("Conclusion"),
         }
+
+
+def flatten_summary_for_embedding(summary: dict) -> List[tuple]:
+    """Return list of (section_key, section_text) for embedding."""
+    sections = []
+    for key, value in summary.items():
+        title = value.get("title", key)
+        content = value.get("content", "")
+        text = f"{title}: {content}"
+        sections.append((key, text))
+    return sections
 
 def extract_text_from_pdf(pdf_file: bytes) -> str:
     """Extract text from PDF file"""
@@ -176,6 +188,32 @@ async def upload_pdf(
         )
 
         summary = generate_structured_summary(full_text)
+
+        # Store summary embeddings in dedicated collection for faster familiarization
+        summary_sections = flatten_summary_for_embedding(summary)
+        summary_docs = []
+        summary_embeddings = []
+        summary_ids = []
+        summary_metadatas = []
+
+        for idx, (section_key, section_text) in enumerate(summary_sections):
+            summary_docs.append(section_text)
+            summary_embeddings.append(get_free_embedding(section_text))
+            summary_ids.append(f"{base_id}_summary_{idx}")
+            summary_metadatas.append({
+                "document_base_id": base_id,
+                "section_key": section_key,
+                "filename": file.filename,
+                "upload_date": uploaded_at,
+            })
+
+        if summary_docs:
+            summary_collection.add(
+                documents=summary_docs,
+                embeddings=summary_embeddings,
+                ids=summary_ids,
+                metadatas=summary_metadatas,
+            )
 
         return {
             "id": base_id,

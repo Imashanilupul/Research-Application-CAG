@@ -12,6 +12,7 @@ from models.chat_models import ChatRequest, ChatResponse
 router = APIRouter(prefix="/qa", tags=["QA"])
 client = get_chroma_client()
 collection = client.get_or_create_collection(config.CHROMA_COLLECTION)
+summary_collection = client.get_or_create_collection(config.SUMMARIES_COLLECTION)
 
 genai.configure(api_key=config.GEMINI_API_KEY)
 embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
@@ -80,7 +81,21 @@ def chat_endpoint(req: ChatRequest, request: Request):
     docs = results.get("documents", [[]])[0] if results.get("documents") else []
     distances = results.get("distances", [[]])[0] if results.get("distances") else []
 
-    prompt = build_prompt(docs, history, req.question)
+    # Pull summary embeddings to provide fast familiarization context
+    summary_results = summary_collection.query(
+        query_embeddings=[query_embedding],
+        n_results=max(2, req.top_k // 2),
+        where={"document_base_id": req.document_id},
+        include=["documents", "metadatas", "distances"],
+    )
+
+    summary_docs = summary_results.get("documents", [[]])[0] if summary_results.get("documents") else []
+    summary_distances = summary_results.get("distances", [[]])[0] if summary_results.get("distances") else []
+
+    combined_context = docs + summary_docs
+    combined_distances = distances + summary_distances
+
+    prompt = build_prompt(combined_context, history, req.question)
 
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
@@ -95,13 +110,13 @@ def chat_endpoint(req: ChatRequest, request: Request):
         answer_text = response.text
         # Approximate confidence: inverse of average distance (bounded 0..1)
         confidence = None
-        if distances:
-            avg_distance = sum(distances) / len(distances)
+        if combined_distances:
+            avg_distance = sum(combined_distances) / len(combined_distances)
             confidence = max(0.0, min(1.0, 1 - avg_distance))
 
         chat_response = ChatResponse(
             answer=answer_text,
-            sources=docs,
+            sources=combined_context,
             confidence=confidence,
         )
 

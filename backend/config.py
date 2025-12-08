@@ -9,6 +9,7 @@ CHROMA_TENENT = os.getenv("CHROMA_TENENT")
 CHROMA_DATABSE = os.getenv("CHROMA_DATABSE")
 CHROMA_API_KEY = os.getenv("CHROMA_API_KEY")
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "documents_collection")
+SUMMARIES_COLLECTION = os.getenv("SUMMARIES_COLLECTION", "summaries_collection")
 
 # Caching and memory configuration
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "600"))
