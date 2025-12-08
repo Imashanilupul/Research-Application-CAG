@@ -1,54 +1,43 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
+*.pycache/
+*.pyc
+*.pyd
+*.pyo
+*.env
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# ChromaDB local files (if any)
+chromadb/
+*.db
 
 # IDEs
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
+*.sublime-project
+*.sublime-workspace
 
-# Environment
-venv/
-env/
-ENV/
-.env
-.env.local
+# Logs
+*.log
 
-# Application data
-data/uploads/*
-data/chroma_db/*
-!data/.gitkeep
-logs/*
-!logs/.gitkeep
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
-*.log
+
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Optional: MacOS files
+*.DS_Store
