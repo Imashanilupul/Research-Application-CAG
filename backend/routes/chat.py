@@ -5,11 +5,11 @@ from fastapi import APIRouter, Request
 from sentence_transformers import SentenceTransformer
 
 import config
-from cache import MemoryStore, SimpleTTLCache, make_cache_key
-from db import get_chroma_client
+from backend.cache import MemoryStore, SimpleTTLCache, make_cache_key
+from backend.db import get_chroma_client
 from models.chat_models import ChatRequest, ChatResponse
 
-router = APIRouter(prefix="/qa", tags=["QA"])
+router = APIRouter()
 client = get_chroma_client()
 collection = client.get_or_create_collection(config.CHROMA_COLLECTION)
 summary_collection = client.get_or_create_collection(config.SUMMARIES_COLLECTION)

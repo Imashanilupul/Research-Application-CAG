@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from sentence_transformers import SentenceTransformer
 
 import config
-from db import get_chroma_client
+from backend.db import get_chroma_client
 
 router = APIRouter()
 client = get_chroma_client()
