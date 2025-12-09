@@ -125,16 +125,16 @@ sequenceDiagram
 ```mermaid
 graph LR
     subgraph ResponseCache["SimpleTTLCache"]
-        RC[document_id::question<br/>→ ChatResponse<br/>TTL: 10 min]
+        RC["document_id::question → ChatResponse<br/>TTL: 10 min"]
     end
     
     subgraph MemoryStore["MemoryStore"]
-        MS[conversation_id<br/>→ [(role, content), ...]<br/>TTL: 24 hrs<br/>Cap: 10 turns]
+        MS["conversation_id → history<br/>TTL: 24 hrs | Cap: 10 turns"]
     end
     
     subgraph VectorStores["Chroma Collections"]
-        DOC_COL[(documents_collection<br/>Fine-grained chunks)]
-        SUM_COL[(summaries_collection<br/>Section embeddings)]
+        DOC_COL[("documents_collection<br/>Fine-grained chunks")]
+        SUM_COL[("summaries_collection<br/>Section embeddings")]
     end
     
     Q[Question] --> RC
