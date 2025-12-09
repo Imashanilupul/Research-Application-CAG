@@ -15,7 +15,7 @@ app.add_middleware(
 
 app.include_router(documents.router, prefix="/documents", tags=["Documents"])
 app.include_router(query.router, prefix="/query", tags=["Query"])
-app.include_router(chat.router)
+app.include_router(chat.router, prefix="/qa", tags=["Chat"])
 
 @app.get("/")
 def root():

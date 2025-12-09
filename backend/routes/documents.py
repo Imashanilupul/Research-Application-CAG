@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 
 import config
 from db import get_chroma_client
+from summary_extractor import generate_summary_from_first_page
 
 router = APIRouter()
 client = get_chroma_client()
@@ -21,7 +22,7 @@ summary_collection = client.get_or_create_collection(config.SUMMARIES_COLLECTION
 embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 genai.configure(api_key=config.GEMINI_API_KEY)
 
-SUMMARY_MODEL = "gemini-1.5-flash"
+SUMMARY_MODEL = "gemini-2.5-flash"
 SUMMARY_MAX_CHARS = 8000  # Trim very large PDFs to keep prompt size reasonable
 
 def get_free_embedding(text: str):
@@ -29,43 +30,9 @@ def get_free_embedding(text: str):
     return embedding_model.encode(text).tolist()
 
 
-def generate_structured_summary(full_text: str) -> dict:
-    """Generate a structured summary using Gemini; fall back gracefully on errors."""
-    trimmed_text = full_text[:SUMMARY_MAX_CHARS]
-    prompt = f"""
-    You are a research-paper summarizer. Produce a concise JSON object with exactly these keys:
-        - title_and_authors: {{"title": "Title & Authors", "content": "..."}}
-        - abstract: {{"title": "Abstract", "content": "..."}}
-        - problem_statement: {{"title": "Problem Statement", "content": "..."}}
-        - methodology: {{"title": "Methodology", "content": "..."}}
-        - key_results: {{"title": "Key Results", "content": "..."}}
-        - conclusion: {{"title": "Conclusion", "content": "..."}}
-
-    Rules:
-        - Keep each section short (2-4 sentences) and factual.
-        - If information is missing, write "Not clearly stated".
-        - Return only valid JSON (no code fences, no prose outside the JSON).
-
-    Paper content:
-    {trimmed_text}
-    """
-
-    try:
-        model = genai.GenerativeModel(SUMMARY_MODEL)
-        response = model.generate_content(prompt)
-        return json.loads(response.text)
-    except Exception:
-        def _fallback(title: str) -> dict:
-            return {"title": title, "content": "Not clearly stated."}
-
-        return {
-            "title_and_authors": _fallback("Title & Authors"),
-            "abstract": _fallback("Abstract"),
-            "problem_statement": _fallback("Problem Statement"),
-            "methodology": _fallback("Methodology"),
-            "key_results": _fallback("Key Results"),
-            "conclusion": _fallback("Conclusion"),
-        }
+def generate_structured_summary(first_page_text: str) -> dict:
+    """Generate a structured summary from the first page of the PDF"""
+    return generate_summary_from_first_page(first_page_text)
 
 
 def flatten_summary_for_embedding(summary: dict) -> List[tuple]:
@@ -88,6 +55,26 @@ def extract_text_from_pdf(pdf_file: bytes) -> str:
         return text
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to extract text from PDF: {str(e)}")
+
+def extract_first_page_from_pdf(pdf_file: bytes) -> str:
+    """Extract text from only the first page of the PDF"""
+    try:
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_file))
+        if len(pdf_reader.pages) == 0:
+            raise HTTPException(status_code=400, detail="PDF has no pages")
+        
+        # Extract first page only
+        first_page = pdf_reader.pages[0]
+        first_page_text = first_page.extract_text()
+        
+        if not first_page_text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract text from first page")
+        
+        return first_page_text
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to extract first page from PDF: {str(e)}")
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
     """Split text into overlapping chunks"""
@@ -141,6 +128,9 @@ async def upload_pdf(
         if not full_text.strip():
             raise HTTPException(status_code=400, detail="No text could be extracted from the PDF")
 
+        # Extract first page for summary generation
+        first_page_text = extract_first_page_from_pdf(pdf_content)
+
         base_id = str(uuid.uuid4())
         uploaded_at = datetime.utcnow().isoformat()
 
@@ -187,7 +177,8 @@ async def upload_pdf(
             metadatas=metadatas,
         )
 
-        summary = generate_structured_summary(full_text)
+        # Generate summary from first page only
+        summary = generate_structured_summary(first_page_text)
 
         # Store summary embeddings in dedicated collection for faster familiarization
         summary_sections = flatten_summary_for_embedding(summary)
