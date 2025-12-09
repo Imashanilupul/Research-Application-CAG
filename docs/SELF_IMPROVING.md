@@ -241,21 +241,21 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    subgraph Memory Store Architecture
+    subgraph MemoryArch["Memory Store Architecture"]
         Key[🔑 Key: conversation_id<br/>or document_id + client_ip]
         Value[💾 Value: Array of tuples<br/>role, content]
         
         Key --> Value
     end
     
-    subgraph Characteristics
+    subgraph Chars["Characteristics"]
         TTL[⏰ TTL: 24 hours<br/>Long-term session memory]
         Max[📊 Max: 10 messages<br/>Sliding window]
         Safe[🔒 Thread-safe<br/>Locking mechanism]
         Evict[♻️ Auto-eviction<br/>Oldest msgs dropped]
     end
     
-    subgraph Self-Improving Benefits
+    subgraph Benefits["Self-Improving Benefits"]
         Pref[✓ Remembers preferences]
         Ctx[✓ Maintains context]
         Reduce[✓ Reduces redundancy]
@@ -263,6 +263,19 @@ graph LR
     end
     
     style Key fill:#e1f5fe
+    style Value fill:#fff9c4
+    style TTL fill:#f3e5f5
+    style Max fill:#f3e5f5
+    style Safe fill:#f3e5f5
+    style Evict fill:#f3e5f5
+    style Pref fill:#c8e6c9
+    style Ctx fill:#c8e6c9
+    style Reduce fill:#c8e6c9
+    style Follow fill:#c8e6c9
+```
+
+---
+
 ## Complete Self-Improvement Cycle
 
 ### End-to-End Flow with Learning Feedback
