@@ -247,30 +247,6 @@ graph TB
     style SummDB fill:#ffebee
     style FastReturn fill:#c8e6c9
     style LLM fill:#b3e5fc
-```lude: documents, metadatas, distances
-
-# Confidence Calculation
-confidence = 1.0 - avg(combined_distances)
-confidence = clamp(confidence, 0.0, 1.0)
-```
-
-### LLM Configuration
-```python
-Model: gemini-2.5-flash
-Temperature: 0.2 (focused, consistent)
-Max Output Tokens: 400 (concise answers)
-System Prompt: "Concise research assistant"
-Context Window: ~32k tokens
-```
-    Phase3 -.->|Self-Improving Loop| Phase2
-    
-    style Phase1 fill:#e3f2fd
-    style Phase2 fill:#e8f5e9
-    style Phase3 fill:#fff9c4
-    style DocsDB fill:#ffebee
-    style SummDB fill:#ffebee
-    style FastReturn fill:#c8e6c9
-    style LLM fill:#b3e5fc
 ```
 
 ---
