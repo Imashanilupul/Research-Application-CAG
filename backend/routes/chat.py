@@ -5,8 +5,8 @@ from fastapi import APIRouter, Request
 from sentence_transformers import SentenceTransformer
 
 import config
-from backend.cache import MemoryStore, SimpleTTLCache, make_cache_key
-from backend.db import get_chroma_client
+from cache import MemoryStore, SimpleTTLCache, make_cache_key
+from db import get_chroma_client
 from models.chat_models import ChatRequest, ChatResponse
 
 router = APIRouter()
