@@ -604,3 +604,7 @@ For issues, questions, or feedback:
 - Review error logs for debugging
 
 **Built with ❤️ for research and learning**
+
+---
+
+*Built for Mithrai 3rd Interview*
