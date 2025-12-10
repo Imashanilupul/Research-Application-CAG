@@ -6,7 +6,7 @@ A full-stack RAG (Retrieval-Augmented Generation) application that enables intel
 
 - 📄 **Smart PDF Processing**: Automatic text extraction, intelligent chunking, and structured summary generation
 - 🧠 **Dual-Layer Retrieval**: Combined search across fine-grained chunks and high-level summaries
-- ⚡ **Multi-Tier Caching**: Response cache (10min) + Conversation memory (24hrs) + Vector stores
+- ⚡ **Multi-Tier Caching**: Response cache  + Conversation memory  + Vector stores
 - 💬 **Context-Aware Chat**: Maintains conversation history for coherent multi-turn interactions
 - 📊 **Structured Summaries**: Auto-extracts 6 key sections using Gemini
 - 🎓 **Self-Improving**: Gets faster and cheaper with every interaction
@@ -518,25 +518,7 @@ The system improves continuously through:
 
 ---
 
-## 📊 Performance Metrics
 
-### Response Times
-- Cache hit: <100ms
-- LLM generation: 2-3 seconds
-- Vector search: 50-200ms
-- Total (no cache): 2.5-3.5 seconds
-
-### Resource Usage
-- Memory: ~500MB (in-process cache)
-- CPU: Light (embeddings on CPU)
-- Storage: Minimal (metadata only, vectors in ChromaDB)
-
-### Cost Optimization
-- Free embeddings (local inference)
-- Cached responses reduce API calls 40-60%
-- Estimated cost: ~$0.01-0.05 per 100 questions
-
----
 
 ## 🐛 Troubleshooting
 
